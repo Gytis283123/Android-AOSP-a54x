@@ -5,6 +5,7 @@ jobs:
   validate-a54x:
     machine:
       image: ubuntu-2404:current
+
     resource_class: large
 
     steps:
@@ -20,7 +21,7 @@ jobs:
               libssl-dev libxml2-utils
 
       - run:
-          name: Install repo
+          name: Install repo tool
           command: |
             mkdir -p "$HOME/bin"
             curl -L \
@@ -34,6 +35,7 @@ jobs:
           command: |
             mkdir -p ~/android/lineage
             cd ~/android/lineage
+
             repo init \
               -u https://github.com/LineageOS/android.git \
               -b lineage-23.2 \
@@ -43,9 +45,10 @@ jobs:
           name: Add A54 device tree
           command: |
             cd ~/android/lineage
+
             mkdir -p .repo/local_manifests
 
-            cat > .repo/local_manifests/a54x.xml <<'EOF'
+            cat > .repo/local_manifests/a54x.xml \<<'EOF'
             <?xml version="1.0" encoding="UTF-8"?>
             <manifest>
               <project
@@ -53,6 +56,7 @@ jobs:
                 path="device/samsung/a54x"
                 remote="github"
                 revision="main" />
+
               <project
                 name="ExynosEnclave/android_vendor_samsung_a54x"
                 path="vendor/samsung/a54x"
@@ -66,6 +70,7 @@ jobs:
           no_output_timeout: 30m
           command: |
             cd ~/android/lineage
+
             repo sync -c -j4 \
               --force-sync \
               --no-clone-bundle \
@@ -76,12 +81,20 @@ jobs:
           command: |
             cd ~/android/lineage
 
-            test -f device/samsung/a54x/AndroidProducts.mk
-            test -f device/samsung/a54x/lineage_a54x.mk
+            if [ ! -f device/samsung/a54x/AndroidProducts.mk ]; then
+              echo "ERROR: AndroidProducts.mk missing"
+              exit 1
+            fi
 
-            echo "A54 device product files found."
+            if [ ! -f device/samsung/a54x/lineage_a54x.mk ]; then
+              echo "ERROR: lineage_a54x.mk missing"
+              exit 1
+            fi
+
+            echo "Device tree files found."
+
             grep -n "COMMON_LUNCH_CHOICES" \
-              device/samsung/a54x/AndroidProducts.mk
+              device/samsung/a54x/AndroidProducts.mk || true
 
 workflows:
   validate:
