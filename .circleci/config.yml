@@ -1,0 +1,89 @@
+
+version: 2.1
+
+jobs:
+  validate-a54x:
+    machine:
+      image: ubuntu-2404:current
+    resource_class: large
+
+    steps:
+      - checkout
+
+      - run:
+          name: Install dependencies
+          command: |
+            sudo apt-get update
+            sudo apt-get install -y \
+              git curl python3 bc bison flex \
+              build-essential zip unzip rsync \
+              libssl-dev libxml2-utils
+
+      - run:
+          name: Install repo
+          command: |
+            mkdir -p "$HOME/bin"
+            curl -L \
+              https://storage.googleapis.com/git-repo-downloads/repo \
+              -o "$HOME/bin/repo"
+            chmod +x "$HOME/bin/repo"
+            echo 'export PATH="$HOME/bin:$PATH"' >> "$BASH_ENV"
+
+      - run:
+          name: Initialize LineageOS 23.2
+          command: |
+            mkdir -p ~/android/lineage
+            cd ~/android/lineage
+            repo init \
+              -u https://github.com/LineageOS/android.git \
+              -b lineage-23.2 \
+              --git-lfs
+
+      - run:
+          name: Add A54 device tree
+          command: |
+            cd ~/android/lineage
+            mkdir -p .repo/local_manifests
+
+            cat > .repo/local_manifests/a54x.xml <<'EOF'
+            <?xml version="1.0" encoding="UTF-8"?>
+            <manifest>
+              <project
+                name="ExynosEnclave/android_device_samsung_a54x"
+                path="device/samsung/a54x"
+                remote="github"
+                revision="main" />
+              <project
+                name="ExynosEnclave/android_vendor_samsung_a54x"
+                path="vendor/samsung/a54x"
+                remote="github"
+                revision="main" />
+            </manifest>
+            EOF
+
+      - run:
+          name: Sync source
+          no_output_timeout: 30m
+          command: |
+            cd ~/android/lineage
+            repo sync -c -j4 \
+              --force-sync \
+              --no-clone-bundle \
+              --no-tags
+
+      - run:
+          name: Validate device tree
+          command: |
+            cd ~/android/lineage
+
+            test -f device/samsung/a54x/AndroidProducts.mk
+            test -f device/samsung/a54x/lineage_a54x.mk
+
+            echo "A54 device product files found."
+            grep -n "COMMON_LUNCH_CHOICES" \
+              device/samsung/a54x/AndroidProducts.mk
+
+workflows:
+  validate:
+    jobs:
+      - validate-a54x
