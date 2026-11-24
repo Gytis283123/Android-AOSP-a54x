@@ -36,6 +36,9 @@ jobs:
             mkdir -p ~/android/lineage
             cd ~/android/lineage
 
+            git config --global user.name "CircleCI"
+            git config --global user.email "circleci@example.com"
+
             repo init \
               -u https://github.com/LineageOS/android.git \
               -b lineage-23.2 \
